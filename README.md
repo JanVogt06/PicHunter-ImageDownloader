@@ -5,7 +5,28 @@ match link, get a folder named after the fixture with the photos numbered
 inside it — no logos, no page furniture, just the match photos at the highest
 resolution fupa.net serves.
 
-**Live:** https://janvogt06.github.io/PicHunter-ImageDownloader/
+Self-hosted: one container, no accounts, no third-party services, no build step.
+
+## Quick start
+
+```bash
+docker compose up -d --build
+```
+
+Then open http://localhost:8080. On other machines in the same network use the
+host's address, for example `http://192.168.1.20:8080`.
+
+The port can be changed without touching the Compose file:
+
+```bash
+PICHUNTER_PORT=9000 docker compose up -d
+```
+
+To keep the site reachable only from the host itself, change the port mapping in
+`docker-compose.yml` to `"127.0.0.1:${PICHUNTER_PORT:-8080}:80"`.
+
+Nothing in this project opens a port on the internet. As long as your router
+does not forward one, the instance is reachable inside your network only.
 
 ## What it does
 
@@ -32,79 +53,40 @@ Photos are downloaded at `1920xauto` — 1920 pixels wide with the original
 aspect ratio preserved. That is the largest variant fupa.net offers; the
 photographers' original files are not publicly available.
 
-## Why a CORS proxy is required
+## How it works
 
-GitHub Pages only serves files, so all the work happens in the visitor's
-browser. Browsers enforce the same-origin policy: JavaScript may only read a
-cross-origin response if that origin allows it via `Access-Control-Allow-Origin`.
+The container runs nginx, which does two things:
 
-- `image.fupa.net` sends `Access-Control-Allow-Origin: *`, so **the photos
-  themselves are fetched directly** by the browser.
-- `api.fupa.net` sends `Access-Control-Allow-Origin: https://www.fupa.net` — an
-  allow list with a single entry. The browser refuses to hand those responses to
-  a page served from anywhere else.
+- serves the static page from `site/`
+- reverse-proxies `/fupa/…` to `https://api.fupa.net/…`
 
-A tiny proxy solves this: it is a server, so the same-origin policy does not
-apply to it, and it returns the JSON with the header the browser wants to see.
-Only three small JSON requests per match go through the proxy (roughly 20 KB);
-the megabytes of photo data do not.
+That second part is what makes the whole thing work. Browsers only let
+JavaScript read a cross-origin response if the other origin allows it via
+`Access-Control-Allow-Origin`, and `api.fupa.net` allows exactly one origin:
+`https://www.fupa.net`. Routing the API through the same nginx that serves the
+page means the browser never makes a cross-origin request in the first place —
+no CORS involved, nothing to configure.
 
-## Setup
+The photos themselves are a different story: `image.fupa.net` sends
+`Access-Control-Allow-Origin: *`, so the browser fetches them **directly**. Only
+three small JSON requests per match pass through nginx; the megabytes of photo
+data do not.
 
-### 1. Deploy the Worker
+The proxy accepts only the three paths the app actually needs
+(`v1/matches/<slug>`, `v2/matches/<slug>/stream`, `v1/galleries/<id>`) and
+nothing else, so it cannot be repurposed as a general fupa.net relay.
 
-The proxy lives in [`worker/worker.js`](worker/worker.js). It is locked down: it
-forwards `GET` requests only, only to `https://api.fupa.net/`, and only for the
-origins listed in `ALLOWED_ORIGINS`.
+## Development without Docker
 
-Adjust `ALLOWED_ORIGINS` if your site is not on
-`https://janvogt06.github.io`, then deploy either way:
-
-**Cloudflare dashboard** — Workers & Pages → Create → Worker → paste the
-contents of `worker/worker.js` → Deploy.
-
-**Wrangler CLI**
+Any static server works, but the API calls need the `/fupa/` route, so run nginx
+and rebuild after a change:
 
 ```bash
-cd worker && npx wrangler deploy
+docker compose up -d --build
 ```
 
-Cloudflare's free plan covers 100,000 requests per day, which is around 33,000
-matches.
-
-### 2. Point the frontend at it
-
-Put the Worker URL into [`site/js/config.js`](site/js/config.js):
-
-```js
-const CONFIG = {
-  corsProxies: [
-    'https://fupa-proxy.dein-name.workers.dev/?url={url}',
-  ],
-  // …
-};
-```
-
-The `{url}` placeholder is replaced with the URL-encoded API address. Several
-entries may be listed; they are tried in order until one answers.
-
-### 3. Enable GitHub Pages
-
-In the repository settings under *Pages*, set the source to **GitHub Actions**.
-Every push to `master` then publishes the `site/` folder through
-[`.github/workflows/pages.yml`](.github/workflows/pages.yml).
-
-## Local development
-
-The Worker allows `localhost` and `127.0.0.1` on any port, so a local server is
-enough:
-
-```bash
-cd site && python3 -m http.server 8000
-```
-
-Opening the files via `file://` does not work — the browser sends `Origin: null`,
-which the Worker rejects.
+Opening `site/index.html` via `file://` shows the page but every search fails —
+there is no proxy behind `/fupa/` then.
 
 ## Layout
 
@@ -112,13 +94,15 @@ which the Worker rejects.
 | --- | --- |
 | `site/index.html` | Page markup |
 | `site/css/styles.css` | Styling, light and dark |
-| `site/js/config.js` | Proxy URL, image variant, parallel downloads |
+| `site/js/config.js` | API route, image variant, parallel downloads |
 | `site/js/fupa.js` | fupa.net API client and link parsing |
 | `site/js/zip.js` | Dependency-free store-only ZIP writer |
 | `site/js/app.js` | Interface logic |
-| `worker/worker.js` | Cloudflare Worker CORS proxy |
+| `docker/default.conf` | nginx: static site plus the API proxy |
+| `Dockerfile` | nginx image with the site baked in |
+| `docker-compose.yml` | Service, port and health check |
 
-No build step, no dependencies, no CDN.
+No JavaScript dependencies, no CDN, no build tooling.
 
 ## Note on rights
 
