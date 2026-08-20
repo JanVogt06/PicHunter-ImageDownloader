@@ -1,7 +1,5 @@
 const CONFIG = {
-  corsProxies: [
-    'https://fupa-proxy.DEIN-SUBDOMAIN.workers.dev/?url={url}',
-  ],
+  apiBase: '/fupa/',
   imageVariant: '1920xauto.jpeg',
   fileExtension: 'jpg',
   concurrency: 5,

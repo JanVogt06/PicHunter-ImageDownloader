@@ -17,15 +17,11 @@
   const progressLabel = document.getElementById('progress-label');
 
   const HINTS = {
-    'no-proxy':
-      'Trage die URL deines Cloudflare Workers in <code>site/js/config.js</code> ein. '
-      + 'Die Anleitung steht im README.',
     'proxy-unreachable':
-      'Der in <code>site/js/config.js</code> eingetragene Proxy antwortet nicht. '
-      + 'Läuft der Worker und stimmt die URL?',
-    'proxy-error':
-      'Prüfe, ob deine Origin in <code>worker/worker.js</code> unter '
-      + '<code>ALLOWED_ORIGINS</code> steht.',
+      'Läuft der Container? Starte ihn mit <code>docker compose up -d</code> und '
+      + 'öffne die Seite über seinen Port, nicht als lokale Datei.',
+    'api-error':
+      'fupa.net hat einen Fehler gemeldet. Versuche es in ein paar Minuten noch einmal.',
   };
 
   let current = null;

@@ -1,5 +1,4 @@
 const Fupa = (() => {
-  const API_BASE = 'https://api.fupa.net/';
   const GALLERY_STREAM_TYPE = 'galerie';
   const IMAGE_HOST = 'https://image.fupa.net/';
 
@@ -46,56 +45,38 @@ const Fupa = (() => {
   }
 
   /**
-   * Fetches a fupa API path through the configured CORS proxies, trying each
-   * entry until one delivers a usable response.
+   * Fetches a fupa API path through the same-origin reverse proxy that serves
+   * this page.
    *
    * @param {string} path API path relative to the fupa API root.
    * @returns {Promise<Object|Array>} Parsed JSON payload.
    */
   async function request(path) {
-    const target = API_BASE + path;
-    const proxies = (CONFIG.corsProxies || []).filter(
-      (proxy) => proxy && !proxy.includes('DEIN-SUBDOMAIN'),
-    );
-
-    if (!proxies.length) {
-      throw new FupaError('Es ist kein CORS-Proxy konfiguriert.', 'no-proxy');
+    let response;
+    try {
+      response = await fetch(CONFIG.apiBase + path, {
+        headers: { Accept: 'application/json' },
+      });
+    } catch (error) {
+      throw new FupaError('Der API-Proxy ist nicht erreichbar.', 'proxy-unreachable');
     }
 
-    let lastError = null;
-    for (const proxy of proxies) {
-      const url = proxy.includes('{url}')
-        ? proxy.replace('{url}', encodeURIComponent(target))
-        : proxy + encodeURIComponent(target);
-
-      let response;
-      try {
-        response = await fetch(url, { headers: { Accept: 'application/json' } });
-      } catch (error) {
-        lastError = new FupaError('Der Proxy ist nicht erreichbar.', 'proxy-unreachable');
-        continue;
-      }
-
-      if (response.status === 404) {
-        throw new FupaError('Diese Seite gibt es auf fupa.net nicht.', 'not-found');
-      }
-
-      if (!response.ok) {
-        lastError = new FupaError(
-          `Der Proxy hat mit Status ${response.status} geantwortet.`,
-          'proxy-error',
-        );
-        continue;
-      }
-
-      try {
-        return await response.json();
-      } catch (error) {
-        lastError = new FupaError('Die Antwort war kein gültiges JSON.', 'bad-response');
-      }
+    if (response.status === 404) {
+      throw new FupaError('Diese Seite gibt es auf fupa.net nicht.', 'not-found');
     }
 
-    throw lastError || new FupaError('Die Anfrage ist fehlgeschlagen.', 'unknown');
+    if (!response.ok) {
+      throw new FupaError(
+        `Die fupa-API hat mit Status ${response.status} geantwortet.`,
+        'api-error',
+      );
+    }
+
+    try {
+      return await response.json();
+    } catch (error) {
+      throw new FupaError('Die Antwort war kein gültiges JSON.', 'bad-response');
+    }
   }
 
   /**
