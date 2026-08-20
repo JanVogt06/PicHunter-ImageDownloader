@@ -9,6 +9,14 @@ Self-hosted: one container, no accounts, no third-party services, no build step.
 
 ## Quick start
 
+Pull the published image:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Or build it yourself from the checkout:
+
 ```bash
 docker compose up -d --build
 ```
@@ -76,10 +84,17 @@ The proxy accepts only the three paths the app actually needs
 (`v1/matches/<slug>`, `v2/matches/<slug>/stream`, `v1/galleries/<id>`) and
 nothing else, so it cannot be repurposed as a general fupa.net relay.
 
-## Development without Docker
+## Releases
 
-Any static server works, but the API calls need the `/fupa/` route, so run nginx
-and rebuild after a change:
+Pushing a tag that starts with `v` builds a multi-architecture image
+(`linux/amd64` and `linux/arm64`), pushes it to
+`ghcr.io/janvogt06/pichunter` as `<version>`, `<major>.<minor>` and `latest`,
+and creates a GitHub release with generated notes.
+
+## Development
+
+The site is baked into the image, so rebuild after editing anything under
+`site/`:
 
 ```bash
 docker compose up -d --build
@@ -101,6 +116,7 @@ there is no proxy behind `/fupa/` then.
 | `docker/default.conf` | nginx: static site plus the API proxy |
 | `Dockerfile` | nginx image with the site baked in |
 | `docker-compose.yml` | Service, port and health check |
+| `.github/workflows/release.yml` | Image build and release on tag push |
 
 No JavaScript dependencies, no CDN, no build tooling.
 
