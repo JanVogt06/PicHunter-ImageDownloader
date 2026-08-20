@@ -95,7 +95,7 @@ const Fupa = (() => {
       }
     }
 
-    throw lastError;
+    throw lastError || new FupaError('Die Anfrage ist fehlgeschlagen.', 'unknown');
   }
 
   /**

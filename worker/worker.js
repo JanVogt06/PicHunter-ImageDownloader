@@ -91,11 +91,7 @@ export default {
     }
 
     const upstream = await fetch(target, {
-      headers: {
-        Accept: 'application/json',
-        Origin: 'https://www.fupa.net',
-        Referer: 'https://www.fupa.net/',
-      },
+      headers: { Accept: 'application/json' },
       cf: { cacheTtl: CACHE_SECONDS, cacheEverything: true },
     });
 
