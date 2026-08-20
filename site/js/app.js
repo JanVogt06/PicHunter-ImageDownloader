@@ -63,9 +63,14 @@
    * @param {string} [code] Error code that selects an additional hint.
    */
   function setStatus(message, code) {
-    const hint = code && HINTS[code] ? `<span class="status-hint">${HINTS[code]}</span>` : '';
-    status.innerHTML = message ? `${message}${hint}` : '';
+    status.textContent = message || '';
     status.classList.toggle('is-error', Boolean(code));
+    if (message && code && HINTS[code]) {
+      const hint = document.createElement('span');
+      hint.className = 'status-hint';
+      hint.innerHTML = HINTS[code];
+      status.appendChild(hint);
+    }
   }
 
   /**
@@ -79,7 +84,6 @@
     progressBar.style.width = '0';
     progressLabel.textContent = '';
     downloadButton.disabled = false;
-    downloadButton.textContent = 'ZIP herunterladen';
   }
 
   /**
