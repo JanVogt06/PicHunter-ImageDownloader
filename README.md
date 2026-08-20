@@ -1,142 +1,131 @@
-# PicHunter 🖼️
+# PicHunter 📸
 
-A powerful Python tool for downloading all images from any website. Features parallel downloads, duplicate detection, and comprehensive image extraction from various sources.
+Downloads all photos of a fupa.net match as a single ZIP archive. Paste the
+match link, get a folder named after the fixture with the photos numbered
+inside it — no logos, no page furniture, just the match photos at the highest
+resolution fupa.net serves.
 
-## Features ✨
+**Live:** https://janvogt06.github.io/PicHunter-ImageDownloader/
 
-- **🚀 Parallel Downloads** - Configurable multi-threaded downloading for maximum speed
-- **🔍 Comprehensive Image Detection**
-  - Standard `<img>` tags
-  - Lazy-loaded images (`data-src`, `data-lazy-src`)
-  - Responsive images (`srcset`)
-  - `<picture>` elements
-  - CSS background images (inline styles)
-- **🛡️ Smart Duplicate Detection** - MD5 hash-based deduplication
-- **📊 Real-time Progress Tracking** - Visual progress bar with tqdm
-- **📁 Automatic Organization** - Images sorted by domain
-- **📝 Detailed Logging** - Comprehensive logs and download reports
-- **🔄 Robust Error Handling** - Graceful handling of failed downloads
-- **⚙️ Highly Configurable** - Command-line arguments for customization
+## What it does
 
-## Requirements 📋
+1. You paste a match link such as
+   `https://www.fupa.net/match/vfb-oberweimar-m1-sv-schott-jena-m2-260711`.
+2. PicHunter reads the match, finds every photo gallery attached to it and
+   collects the photos.
+3. It packs them into `Heimmannschaft - Gastmannschaft.zip`:
 
-- Python 3.6 or higher
-- pip (Python package manager)
+```
+VfB Oberweimar - SV SCHOTT Jena II.zip
+└── VfB Oberweimar - SV SCHOTT Jena II/
+    ├── VfB Oberweimar - SV SCHOTT Jena II - 001.jpg
+    ├── VfB Oberweimar - SV SCHOTT Jena II - 002.jpg
+    └── …
+```
 
-## Installation 🔧
+Matches without photos are reported as such instead of producing an empty
+archive. Direct gallery links (`https://www.fupa.net/photos/…`) work as well.
+If a match carries several galleries, all photos land in the same folder with
+continuous numbering.
 
-1. Clone the repository:
+Photos are downloaded at `1920xauto` — 1920 pixels wide with the original
+aspect ratio preserved. That is the largest variant fupa.net offers; the
+photographers' original files are not publicly available.
+
+## Why a CORS proxy is required
+
+GitHub Pages only serves files, so all the work happens in the visitor's
+browser. Browsers enforce the same-origin policy: JavaScript may only read a
+cross-origin response if that origin allows it via `Access-Control-Allow-Origin`.
+
+- `image.fupa.net` sends `Access-Control-Allow-Origin: *`, so **the photos
+  themselves are fetched directly** by the browser.
+- `api.fupa.net` sends `Access-Control-Allow-Origin: https://www.fupa.net` — an
+  allow list with a single entry. The browser refuses to hand those responses to
+  a page served from anywhere else.
+
+A tiny proxy solves this: it is a server, so the same-origin policy does not
+apply to it, and it returns the JSON with the header the browser wants to see.
+Only three small JSON requests per match go through the proxy (roughly 20 KB);
+the megabytes of photo data do not.
+
+## Setup
+
+### 1. Deploy the Worker
+
+The proxy lives in [`worker/worker.js`](worker/worker.js). It is locked down: it
+forwards `GET` requests only, only to `https://api.fupa.net/`, and only for the
+origins listed in `ALLOWED_ORIGINS`.
+
+Adjust `ALLOWED_ORIGINS` if your site is not on
+`https://janvogt06.github.io`, then deploy either way:
+
+**Cloudflare dashboard** — Workers & Pages → Create → Worker → paste the
+contents of `worker/worker.js` → Deploy.
+
+**Wrangler CLI**
+
 ```bash
-git clone https://github.com/JanVogt06/PicHunter.git
-cd PicHunter
+cd worker && npx wrangler deploy
 ```
 
-2. Create a virtual environment (recommended):
+Cloudflare's free plan covers 100,000 requests per day, which is around 33,000
+matches.
+
+### 2. Point the frontend at it
+
+Put the Worker URL into [`site/js/config.js`](site/js/config.js):
+
+```js
+const CONFIG = {
+  corsProxies: [
+    'https://fupa-proxy.dein-name.workers.dev/?url={url}',
+  ],
+  // …
+};
+```
+
+The `{url}` placeholder is replaced with the URL-encoded API address. Several
+entries may be listed; they are tried in order until one answers.
+
+### 3. Enable GitHub Pages
+
+In the repository settings under *Pages*, set the source to **GitHub Actions**.
+Every push to `master` then publishes the `site/` folder through
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml).
+
+## Local development
+
+The Worker allows `localhost` and `127.0.0.1` on any port, so a local server is
+enough:
+
 ```bash
-# Windows
-python -m venv .venv
-.venv\Scripts\activate
-
-# Linux/macOS
-python -m venv .venv
-source .venv/bin/activate
+cd site && python3 -m http.server 8000
 ```
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+Opening the files via `file://` does not work — the browser sends `Origin: null`,
+which the Worker rejects.
 
-Or install manually:
-```bash
-pip install requests beautifulsoup4 tqdm
-```
+## Layout
 
-## Usage 🚀
+| Path | Purpose |
+| --- | --- |
+| `site/index.html` | Page markup |
+| `site/css/styles.css` | Styling, light and dark |
+| `site/js/config.js` | Proxy URL, image variant, parallel downloads |
+| `site/js/fupa.js` | fupa.net API client and link parsing |
+| `site/js/zip.js` | Dependency-free store-only ZIP writer |
+| `site/js/app.js` | Interface logic |
+| `worker/worker.js` | Cloudflare Worker CORS proxy |
 
-### Basic Usage
-```bash
-python image_downloader.py https://example.com
-```
+No build step, no dependencies, no CDN.
 
-### Advanced Options
-```bash
-# Custom output directory
-python image_downloader.py https://example.com -o my_images
+## Note on rights
 
-# Increase parallel downloads (default: 5)
-python image_downloader.py https://example.com -w 10
+The photos belong to the respective photographers and are protected by
+copyright. fupa.net states that use and re-uploads require written consent.
+PicHunter only makes downloading easier; obtaining permission is up to you.
 
-# Show help
-python image_downloader.py -h
-```
+## License
 
-### Command Line Arguments
-
-| Argument | Description | Default |
-|----------|-------------|---------|
-| `url` | The URL of the website to scrape | Required |
-| `-o`, `--output` | Output directory for downloaded images | `downloaded_images` |
-| `-w`, `--workers` | Number of parallel download threads | `5` |
-
-## Output Structure 📂
-
-```
-downloaded_images/
-└── example.com/
-    ├── image_1.jpg
-    ├── image_2.png
-    ├── logo.svg
-    ├── download_report.txt
-    └── image_download_20250124_143022.log
-```
-
-## Example Output 📊
-
-```
-========== Download Completed ==========
-Successfully downloaded: 42
-Duplicates skipped: 7
-Failed: 0
-Total processed: 51
-Output folder: downloaded_images/example.com
-======================================
-```
-
-## Features in Detail 🔍
-
-### Duplicate Detection
-PicHunter uses MD5 hashing to detect and skip duplicate images, even if they have different filenames on the server.
-
-### Smart Filename Generation
-- Preserves original filenames when possible
-- Sanitizes filenames for filesystem compatibility
-- Adds incremental numbers to prevent overwrites
-
-### Comprehensive Logging
-- Console output with real-time progress
-- Detailed log files for each session
-- Download report with statistics
-
-## Limitations ⚠️
-
-- Cannot download images from pages requiring authentication
-- JavaScript-rendered content requires additional tools (z.B., Selenium)
-
-## License 📄
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments 🙏
-
-- [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) for HTML parsing
-- [Requests](https://requests.readthedocs.io/) for HTTP operations
-- [tqdm](https://github.com/tqdm/tqdm) for progress bars
-
-## Author ✍️
-
-**Jan Vogt** - [JanVogt06](https://github.com/JanVogt06)
-
----
-
-⭐ If you find this tool useful, please consider giving it a star on GitHub!
+MIT — see [LICENSE](LICENSE).
