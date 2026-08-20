@@ -1,7 +1,7 @@
 services:
   pichunter:
+    image: ghcr.io/janvogt06/pichunter:latest
     build: .
-    image: pichunter
     container_name: pichunter
     restart: unless-stopped
     ports:
