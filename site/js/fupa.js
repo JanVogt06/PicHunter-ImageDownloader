@@ -1,6 +1,7 @@
 const Fupa = (() => {
   const API_BASE = 'https://api.fupa.net/';
   const GALLERY_STREAM_TYPE = 'galerie';
+  const IMAGE_HOST = 'https://image.fupa.net/';
 
   class FupaError extends Error {
     /**
@@ -145,18 +146,28 @@ const Fupa = (() => {
   }
 
   /**
-   * Builds the download URLs of all photos in a gallery at the configured
-   * variant, skipping entries without a usable image path.
+   * Collects the image base paths of all photos in a gallery, skipping entries
+   * that do not point at the fupa image host.
    *
    * @param {Object} gallery Gallery payload.
-   * @returns {Array<string>} Absolute image URLs.
+   * @returns {Array<string>} Image base paths ending in a slash.
    */
-  function photoUrls(gallery) {
+  function photoPaths(gallery) {
     const items = (gallery && gallery.items) || [];
     return items
       .map((item) => item && item.image && item.image.path)
-      .filter((path) => typeof path === 'string' && path.startsWith('https://image.fupa.net/'))
-      .map((path) => `${path}${CONFIG.imageVariant}`);
+      .filter((path) => typeof path === 'string' && path.startsWith(IMAGE_HOST));
+  }
+
+  /**
+   * Turns an image base path into a concrete URL for one size variant.
+   *
+   * @param {string} path Image base path from the API.
+   * @param {string} variant Variant file name, for example 1920xauto.jpeg.
+   * @returns {string} Absolute image URL.
+   */
+  function imageUrl(path, variant) {
+    return `${path}${variant}`;
   }
 
   /**
@@ -181,7 +192,8 @@ const Fupa = (() => {
     loadStream,
     loadGallery,
     extractGalleries,
-    photoUrls,
+    photoPaths,
+    imageUrl,
     teamNames,
   };
 })();
