@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PicHunter – Spielfotos von fupa.net</title>
+  <meta name="description" content="Lädt alle Fotos eines fupa.net-Spiels als ZIP herunter.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <h1>PicHunter</h1>
+      <p class="tagline">Alle Fotos eines fupa.net-Spiels als ZIP</p>
+    </header>
+
+    <form id="search-form" class="search" autocomplete="off">
+      <label class="field">
+        <span class="field-label">Link zum Spiel</span>
+        <input
+          id="link-input"
+          class="field-input"
+          type="text"
+          name="link"
+          placeholder="https://www.fupa.net/match/..."
+          spellcheck="false"
+          required
+        >
+      </label>
+      <button id="search-button" class="button button-primary" type="submit">Fotos suchen</button>
+    </form>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+
+    <section id="result" class="result" hidden>
+      <div class="result-head">
+        <h2 id="result-title" class="result-title"></h2>
+        <p id="result-meta" class="result-meta"></p>
+      </div>
+
+      <div id="preview" class="preview"></div>
+
+      <div class="result-actions">
+        <button id="download-button" class="button button-primary" type="button">
+          ZIP herunterladen
+        </button>
+        <div id="progress" class="progress" hidden>
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <p id="progress-label" class="progress-label"></p>
+      </div>
+    </section>
+
+    <footer class="footnote">
+      <p>
+        Die Fotos gehören den jeweiligen Fotografen und sind urheberrechtlich
+        geschützt. Nutzung und Re-Uploads nur mit deren Zustimmung.
+      </p>
+    </footer>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/zip.js"></script>
+  <script src="js/fupa.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
