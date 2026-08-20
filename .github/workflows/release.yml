@@ -63,7 +63,7 @@ jobs:
             ## Container image
 
             ```bash
-            docker pull ${{ steps.image.outputs.name }}:${{ github.ref_name }}
+            docker pull ${{ steps.image.outputs.name }}:${{ steps.meta.outputs.version }}
             ```
 
             Built for `linux/amd64` and `linux/arm64`.
