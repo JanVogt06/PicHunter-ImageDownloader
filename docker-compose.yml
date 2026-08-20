@@ -1,0 +1,13 @@
+services:
+  pichunter:
+    build: .
+    image: pichunter
+    container_name: pichunter
+    restart: unless-stopped
+    ports:
+      - "${PICHUNTER_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
