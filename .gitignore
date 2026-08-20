@@ -1,19 +1,4 @@
-# Virtual Environment
-.venv/
-
-# PyCharm/IntelliJ IDEA
+.DS_Store
 .idea/
-
-# Python Cache
-__pycache__/
-
-# Project Output
-downloaded_images/
-
-# Log Files
-*.log
-
-# PyInstaller
-build/
-dist/
-*.spec
+node_modules/
+.wrangler/
